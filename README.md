@@ -1,8 +1,10 @@
 # SessionAware
 
-Structural signal extractor for Claude Code session transcripts.
+**AI providers are paid for every token generated. Users are charged for every token generated. These interests are only aligned when every token serves the user.**
 
-Counts 11 categories of assistant-turn events that generate billable tokens while providing no function to the user. Raw counts only. No interpretation.
+SessionAware measures where they diverge.
+
+It extracts 11 structural signals from Claude Code session transcripts — each one a category of billable token generation that provides no function to the user. The output is counts. The counts are the accountability.
 
 ---
 
