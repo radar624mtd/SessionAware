@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# SessionAware — never commit transcript data or reports
+output/
+report_local.json
+report_upload.json
+*.jsonl
+session-export-*/
+analyze_session.py
