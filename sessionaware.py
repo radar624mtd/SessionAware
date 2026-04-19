@@ -2,7 +2,7 @@
 """
 SessionAware — raw signal extractor for Claude Code session transcripts.
 
-Extracts 10 structural signatures of the "look productive" gradient from
+Extracts 11 structural signatures of the "look productive" gradient from
 ~/.claude/projects/**/*.jsonl or a directory of session export ZIPs/JSONLs.
 
 Output: report_local.json  — full per-session detail (never upload this)
@@ -45,6 +45,7 @@ SIGNATURES: dict[str, str] = {
     "S12": "Re-plan without delta — TodoWrite re-run with no new tool results between",
     "S13": "Scope declaration — lists files/steps immediately before doing them",
     "S14": "Acknowledgment without transition — filler turn with no subsequent action",
+    "S15": "Repeat failed tool call — same tool+input re-issued after an error result",
 }
 
 # ---------------------------------------------------------------------------
@@ -322,6 +323,46 @@ def extract_S14(msgs: list[dict]) -> int:
 # Per-session analysis
 # ---------------------------------------------------------------------------
 
+_ERROR_RE = re.compile(
+    r"\b(error|exception|traceback|exit code [1-9]|not found|no such file|"
+    r"failed|failure|cannot|could not|unable to|invalid|unexpected|denied|"
+    r"permission|unrecognized|does not exist|timed out|timeout)\b",
+    re.IGNORECASE,
+)
+
+def _tool_fingerprint(tool: dict) -> str:
+    """Stable key for a tool call: name + sorted input params (truncated)."""
+    name = tool.get("name", "")
+    inp = tool.get("input", {})
+    parts = sorted(f"{k}={str(v)[:120]}" for k, v in inp.items())
+    return name + "|" + "|".join(parts)
+
+
+def extract_S15(msgs: list[dict]) -> int:
+    """Repeat failed tool call: tool re-issued with same name+input after an error result
+    appeared between the two calls. Counts each redundant re-issue, not each error."""
+    count = 0
+    # track: fingerprint -> (last_call_index, error_seen_since_last_call)
+    state: dict[str, dict] = {}
+
+    for i, m in enumerate(msgs):
+        if m["role"] == "user":
+            # scan tool results for error markers
+            for res in m["results"]:
+                if _ERROR_RE.search(res):
+                    # mark all previously seen fingerprints as having an error after them
+                    for fp in state:
+                        state[fp]["error_after"] = True
+        elif m["role"] == "assistant":
+            for t in m["tools"]:
+                fp = _tool_fingerprint(t)
+                if fp in state and state[fp].get("error_after"):
+                    count += 1
+                state[fp] = {"idx": i, "error_after": False}
+
+    return count
+
+
 EXTRACTORS = {
     "S3":  extract_S3,
     "S4":  extract_S4,
@@ -333,6 +374,7 @@ EXTRACTORS = {
     "S12": extract_S12,
     "S13": extract_S13,
     "S14": extract_S14,
+    "S15": extract_S15,
 }
 
 
