@@ -4,25 +4,24 @@
 
 SessionAware measures where they diverge.
 
-It extracts 11 structural signals from Claude Code session transcripts — each one a category of billable token generation that provides no function to the user. The output is counts. The counts are the accountability.
+It extracts 10 structural signals from Claude Code session transcripts — each one a category of billable token generation that provides no function to the user. The output is counts. The counts are the accountability.
 
 ---
 
 ## Signals
 
-| ID | Event | Definition |
+| ID | Name | Definition |
 |---|---|---|
-| S3 | Redundant read | `Read` on path P where P was already read with no intervening `Edit`/`Write` on P |
-| S4 | Turn split | Consecutive assistant turns with no user turn between |
-| S5 | Unanchored TodoWrite | `TodoWrite` call not followed by any tool action before next user turn |
-| C3 | Bash ping-pong | Identical `Bash` command issued more than once in a session |
-| S8 | Result restatement | Assistant text-only turn with >55% token overlap with immediately preceding tool result |
-| S9 | Plan-execute echo | Text-only → tool-call → text-only assistant sandwich with no user turns between |
-| S10 | Redundant search | Identical `Grep`/`Glob` pattern re-issued with no new writes between |
-| S12 | Re-plan without delta | `TodoWrite` re-issued between same user turns with no intervening tool results |
-| S13 | Scope declaration | Text-only turn matching planning language immediately before an `Edit`/`Write` turn |
-| S14 | Acknowledgment without transition | Text-only turn matching filler phrases with no tool action before next user turn |
-| S15 | Repeat failed tool call | Tool re-issued with same name and input after an error result appeared between calls |
+| S1 | Redundant read | `Read` of a range already in context: exact repeat, subsumed range, partial overlap, or unnecessary split across consecutive turns |
+| S2 | Unanchored TodoWrite | `TodoWrite` call not followed by any tool action before the next user turn |
+| S3 | Bash ping-pong | `Bash` command re-issued with the same environment fingerprint (shell dialect, path style) that previously failed, after a corrected fingerprint succeeded |
+| S4 | Result restatement | Text-only assistant turn immediately after a tool result, where the text is backward-looking with no new information |
+| S5 | Narration turn | Text-only assistant turn wrapping tool calls: either the closing echo of a tool sandwich (text → tools → **text**) or a preamble announcing an action immediately before taking it |
+| S6 | Redundant search | Identical `Grep`/`Glob` pattern re-issued with no new writes between |
+| S7 | Re-plan without delta | `TodoWrite` re-issued within the same user-turn block with no intervening tool results |
+| S8 | Acknowledgment without transition | Text-only turn matching filler phrases (e.g. "Got it", "Understood") with no tool action before the next user turn |
+| S9 | Repeat failed tool call | Tool re-issued with the same name and input after an error result appeared between calls |
+| S10 | Known-fix failure | Tool re-fired after an error whose solution was already stated in context — sub-cases: truncated read (`trunc`), write before read (`write_before_read`), edit no-match (`edit_no_match`), wrong Python invocation (`py_not_found`) |
 
 Each signal event enters the context window and remains for the duration of the session, present in every subsequent cache read.
 
