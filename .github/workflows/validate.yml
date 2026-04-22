@@ -1,0 +1,25 @@
+name: Validate Signal Logic
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Run Signal Validation Tests
+      run: python test_signals.py
+    - name: Verify Report Generation (Dry Run)
+      run: |
+        python generate_mock.py
+        python sessionaware.py --file mock.jsonl
+        if [ ! -f report_local.json ]; then echo "report_local.json missing"; exit 1; fi
+        if [ ! -f report_upload.json ]; then echo "report_upload.json missing"; exit 1; fi
