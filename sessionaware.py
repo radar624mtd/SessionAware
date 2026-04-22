@@ -225,17 +225,9 @@ def _merge_range(merged: list[tuple[int, int]], cur: tuple[int, int | None]):
 def extract_S1(msgs: list[dict]) -> set[int]:
     """Redundant read — Read of content already in context."""
     hits = set()
-    # Path -> merged non-overlapping ranges already read
     path_merged: dict[str, list[tuple[int, int]]] = defaultdict(list)
-    # Path -> (msg_idx, range) of most recent Read (for split detection)
-    last_read: dict[str, tuple[int, tuple[int, int | None]]] = {}
-    last_nonread_turn: int = -1
 
     for msg_idx, m in enumerate(msgs):
-        has_nonread = any(t["name"] != "Read" for t in m["tools"])
-        if has_nonread:
-            last_nonread_turn = msg_idx
-
         for t in m["tools"]:
             if t["name"] != "Read":
                 continue
@@ -245,21 +237,10 @@ def extract_S1(msgs: list[dict]) -> set[int]:
             cur = _read_range(t)
             merged = path_merged[fp]
 
-            # 1. exact/subsumed/overlap via merged set
             if _range_overlaps_merged(merged, cur):
                 hits.add(msg_idx)
-            # 2. split — disjoint but contiguous with the most recent prior Read
-            elif fp in last_read:
-                prev_msg_idx, prev_range = last_read[fp]
-                prev_off, prev_lim = prev_range
-                cur_off, _ = cur
-                if (prev_lim is not None and cur_off == prev_off + prev_lim 
-                    and last_nonread_turn <= prev_msg_idx):
-                    hits.add(msg_idx)
 
             path_merged[fp] = _merge_range(merged, cur)
-            if m["role"] == "assistant":
-                last_read[fp] = (msg_idx, cur)
 
     return hits
 
